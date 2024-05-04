@@ -57,7 +57,7 @@ class Book:
         chapter_counter = 0
         is_next_chapter_available = True
 
-        while is_next_chapter_available and chapter_counter < 5:
+        while is_next_chapter_available:
             chapter_counter += 1
             chapter_title = soup.find('h1', class_='font-white break-word').get_text()
             chapter_text = str(soup.find('div', class_='chapter-content'))
