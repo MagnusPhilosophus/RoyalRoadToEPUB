@@ -5,6 +5,7 @@ import sys
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from ebooklib import epub
+from abc import ABC, abstractmethod
 
 def download_image(url, file_name):
     res = requests.get(url, stream=True)
@@ -25,13 +26,34 @@ class Chapter:
     def get_filename(self):
         return f'chapter_{self.number}: "{self.title}".xhtml'
 
-class Book:
+class Book(ABC):
     def __init__(self, url):
         self.chapters = []
         self.url = url
         res = requests.get(url)
         self.soup = BeautifulSoup(res.content, 'html.parser')
 
+    @abstractmethod
+    def get_title(self):
+        pass
+
+    @abstractmethod
+    def get_author(self):
+        pass
+
+    @abstractmethod
+    def get_description(self):
+        pass
+
+    @abstractmethod
+    def get_cover(self):
+        pass
+
+    @abstractmethod
+    def get_chapters(self):
+        pass
+
+class RoyalRoadBook(Book):
     def get_title(self):
         return self.soup.find('h1', class_='font-white').get_text()
 
@@ -81,7 +103,7 @@ if __name__ == "__main__":
         print("No arguments provided")
         exit()
     url = sys.argv[1]
-    book = Book(url)
+    book = RoyalRoadBook(url)
 
     epub_book = epub.EpubBook()
     epub_book.set_title(book.get_title())
