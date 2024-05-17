@@ -1,3 +1,6 @@
+from playwright.sync_api import Page, expect, sync_playwright
+import random
+import time
 import requests
 import re
 import os 
@@ -8,11 +11,13 @@ from ebooklib import epub
 from abc import ABC, abstractmethod
 
 def download_image(url, file_name):
-    res = requests.get(url, stream=True)
-    if res.status_code == 200:
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
         with open(file_name, 'wb') as f:
-            for chunk in res.iter_content(1024):
-                f.write(chunk)
+            f.write(response.content)
+    else:
+        print(f'Failed to download image. Status code: {response.status_code}')
 
 class Chapter:
     def __init__(self, number, title, text):
@@ -52,6 +57,71 @@ class Book(ABC):
     @abstractmethod
     def get_chapters(self):
         pass
+
+class LightNovelWorldBook(Book):
+    def __init__(self, url):
+        self.chapters = []
+        self.p = sync_playwright().start()
+        self.browser = self.p.chromium.launch(headless=False, slow_mo=250)
+        self.context = self.browser.new_context()
+        self.page = self.context.new_page()
+        self.page.goto(url)
+        self.soup = BeautifulSoup(self.page.content(), 'html.parser')
+
+    def get_title(self):
+        return self.soup.find('h1', class_='novel-title').get_text()
+
+    def get_author(self):
+        return self.soup.find('span', {'itemprop' : 'author'}).get_text()
+
+    def get_description(self):
+        def delete_last_lines(text):
+            lines = text.split('\n')
+            lines = lines[:-3]
+            updated_text = '\n'.join(lines)
+            return updated_text
+        return delete_last_lines(self.soup.find('div', class_='content').get_text())
+
+    def get_cover(self):
+        book_cover_url = self.soup.find('img', class_='ls-is-cached lazyloaded').get('src')
+        book_cover_path = 'cover.jpg'
+        download_image(book_cover_url, book_cover_path)
+        return book_cover_path
+
+    def get_chapters(self):
+        url = self.soup.find('a', id='readchapterbtn').get('href')
+        self.page.goto(f'https://www.lightnovelworld.com{url}')
+        self.soup = BeautifulSoup(self.page.content(), 'html.parser')
+
+        chapter_counter = 0
+        is_next_chapter_available = True
+        while is_next_chapter_available:
+            chapter_counter += 1
+            if chapter_counter % 50 == 0:
+                time.sleep(60)
+            chapter_title = self.soup.find('span', class_='chapter-title').get_text()
+            chapter_text = str(self.soup.find('div', id='chapter-container'))
+            print(f'Writing chapter_{chapter_counter}: "{chapter_title}"')
+            self.chapters.append(Chapter(chapter_counter, chapter_title, chapter_text))
+            button = self.soup.find('a', class_='button nextchap')
+            if 'isDisabled' in button.get('class', []):
+                print("last button")
+                is_next_chapter_available = False
+                break
+            time.sleep(2)
+            try:
+                print(button.get('href'))
+                self.page.goto(f"https://www.lightnovelworld.com{button.get('href')}")
+            except Exception as e:
+                print(f"Exception occurred: {e}")
+            #page.frame_locator("iframe[title=\"Widget containing a Cloudflare security challenge\"]").get_by_label("Verify you are human").check()
+            #self.page.wait_for_selector('span.chapter-title', timeout=random.uniform(10, 50) * 1000)
+            self.soup = BeautifulSoup(self.page.content(), 'html.parser')
+
+    def __del__(self):
+        self.context.close()
+        self.browser.close()
+        self.p.stop()
 
 class RoyalRoadBook(Book):
     def get_title(self):
@@ -97,12 +167,20 @@ class RoyalRoadBook(Book):
             next_url = urljoin(self.url, link.get('href'))
             response = requests.get(next_url)
             soup = BeautifulSoup(response.content, 'html.parser')
-        
+
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("No arguments provided")
         exit()
     url = sys.argv[1]
+    book = LightNovelWorldBook(url)
+    #print(book.get_title())
+    #print(book.get_author())
+    #print(book.get_description())
+    #book.get_cover()
+    book.get_chapters()
+    del book
+    '''
     book = RoyalRoadBook(url)
 
     epub_book = epub.EpubBook()
@@ -139,5 +217,6 @@ if __name__ == "__main__":
     epub_book.add_item(epub.EpubNav())
 
     epub.write_epub(f'{book.get_title()}.epub', epub_book)
+    '''
 #url = 'https://www.royalroad.com/fiction/36049/the-primal-hunter'
 #url = 'https://www.royalroad.com/fiction/81581/amber-the-cursed-berserker'
