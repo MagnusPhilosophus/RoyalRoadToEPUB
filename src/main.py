@@ -89,34 +89,26 @@ class LightNovelWorldBook(Book):
         return book_cover_path
 
     def get_chapters(self):
-        url = self.soup.find('a', id='readchapterbtn').get('href')
-        self.page.goto(f'https://www.lightnovelworld.com{url}')
+        self.page.get_by_role("link", name="Read Chapter").click()
         self.soup = BeautifulSoup(self.page.content(), 'html.parser')
 
         chapter_counter = 0
-        is_next_chapter_available = True
-        while is_next_chapter_available:
+        while True:
             chapter_counter += 1
-            if chapter_counter % 50 == 0:
-                time.sleep(60)
             chapter_title = self.soup.find('span', class_='chapter-title').get_text()
             chapter_text = str(self.soup.find('div', id='chapter-container'))
             print(f'Writing chapter_{chapter_counter}: "{chapter_title}"')
             self.chapters.append(Chapter(chapter_counter, chapter_title, chapter_text))
+
             button = self.soup.find('a', class_='button nextchap')
-            if 'isDisabled' in button.get('class', []):
-                print("last button")
-                is_next_chapter_available = False
+            if not button:
                 break
-            time.sleep(2)
-            try:
-                print(button.get('href'))
-                self.page.goto(f"https://www.lightnovelworld.com{button.get('href')}")
-            except Exception as e:
-                print(f"Exception occurred: {e}")
-            #page.frame_locator("iframe[title=\"Widget containing a Cloudflare security challenge\"]").get_by_label("Verify you are human").check()
-            #self.page.wait_for_selector('span.chapter-title', timeout=random.uniform(10, 50) * 1000)
+            self.page.close()
+            self.page = self.context.new_page()
+            self.page.goto(f"https://www.lightnovelworld.com{button.get('href')}")
+            self.page.wait_for_timeout(2500)
             self.soup = BeautifulSoup(self.page.content(), 'html.parser')
+            # self.page.get_by_role("link", name="Next ").click()
 
     def __del__(self):
         self.context.close()
@@ -173,15 +165,14 @@ if __name__ == "__main__":
         print("No arguments provided")
         exit()
     url = sys.argv[1]
+    #book = RoyalRoadBook(url)
     book = LightNovelWorldBook(url)
     #print(book.get_title())
     #print(book.get_author())
     #print(book.get_description())
     #book.get_cover()
-    book.get_chapters()
-    del book
-    '''
-    book = RoyalRoadBook(url)
+    #book.get_chapters()
+    #del book
 
     epub_book = epub.EpubBook()
     epub_book.set_title(book.get_title())
@@ -217,6 +208,5 @@ if __name__ == "__main__":
     epub_book.add_item(epub.EpubNav())
 
     epub.write_epub(f'{book.get_title()}.epub', epub_book)
-    '''
 #url = 'https://www.royalroad.com/fiction/36049/the-primal-hunter'
 #url = 'https://www.royalroad.com/fiction/81581/amber-the-cursed-berserker'
