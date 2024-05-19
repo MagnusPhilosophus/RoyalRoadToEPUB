@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 from abc import ABC, abstractmethod
+
 user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36 Edg/116.0.1938.81"
 
 def download_image(url, file_name):
@@ -22,7 +23,7 @@ class Chapter:
         print(self.title, '\n\n', self.text)
 
     def get_filename(self):
-        return f'chapter_{self.number}: "{self.title}".xhtml'
+        return f'{self.number}.xhtml'
 
 class Book(ABC):
     def __init__(self, url):

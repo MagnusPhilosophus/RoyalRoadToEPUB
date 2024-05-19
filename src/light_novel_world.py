@@ -59,7 +59,7 @@ class LightNovelWorldBook(Book):
             self.page.close()
             self.page = self.context.new_page()
             self.page.goto(f"https://www.lightnovelworld.com{button.get('href')}")
-            self.page.wait_for_timeout(2500)
+            self.page.wait_for_timeout(1700)
             soup = BeautifulSoup(self.page.content(), 'html.parser')
 
     def __del__(self):

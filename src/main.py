@@ -18,13 +18,32 @@ if __name__ == "__main__":
         print(f'No support for {url} yet')
 
     epub_book = epub.EpubBook()
+
+    epub_book.set_identifier(book.get_title().lower().replace(' ', '-'))
     epub_book.set_title(book.get_title())
+    epub_book.set_language('en')
     epub_book.add_author(book.get_author())
     epub_book.add_metadata('DC', 'description', book.get_description())
     cover_path = book.get_cover()
-    epub_book.set_cover('cover.jpg', open(cover_path, 'rb').read())
-    os.remove(cover_path)
-    epub_book.set_language('en')
+    epub_book.set_cover("cover.jpg", open(cover_path, 'rb').read())
+    # Create a cover page
+    cover_html = epub.EpubHtml(title='Cover', file_name='cover.xhtml', lang='en')
+    cover_html.content = f'''
+<html>
+<head>
+    <title>Cover</title>
+    <style>
+        @page {{ margin: 0; }}
+        body {{ margin: 0; text-align: center; }}
+        img {{ width: 100%; height: auto; }}
+    </style>
+</head>
+<body>
+    <img src="cover.jpg" alt="Cover Image"/>
+</body>
+</html>'''
+    epub_book.add_item(cover_html)
+
     book.get_chapters()
 
     epub_chapters = []
@@ -36,19 +55,40 @@ if __name__ == "__main__":
         epub_chapters.append(epub_chapter)
         epub_book.add_item(epub_chapter)
 
-    style = 'body { font-family: Times, Times New Roman, serif; }'
+    style = '''
+@namespace epub "http://www.idpf.org/2007/ops";
 
-    nav_css = epub.EpubItem(uid="style_nav",
-                            file_name="style/nav.css",
-                            media_type="text/css",
-                            content=style)
+body {
+    font-family: Cambria, Liberation Serif, Bitstream Vera Serif, Georgia, Times, Times New Roman, serif;
+}
+h2 {
+     text-align: left;
+     text-transform: uppercase;
+     font-weight: 200;
+}
+ol {
+        list-style-type: none;
+}
+ol > li:first-child {
+        margin-top: 0.3em;
+}
+nav[epub|type~='toc'] > ol > li > ol  {
+    list-style-type:square;
+}
+nav[epub|type~='toc'] > ol > li > ol > li {
+        margin-top: 0.3em;
+}
+'''
+
+    nav_css = epub.EpubItem(uid="style_nav", file_name="style/nav.css", media_type="text/css", content=style)
     epub_book.add_item(nav_css)
 
     epub_book.toc = ([epub.Link(chapter.get_filename(), chapter.title, chapter.title) for chapter in book.chapters])
 
-    epub_book.spine = ['nav', *epub_chapters]
+    epub_book.spine = ['cover', 'nav'] + epub_chapters
     epub_book.add_item(epub.EpubNcx())
     epub_book.add_item(epub.EpubNav())
 
     epub.write_epub(f'{book.get_title()}.epub', epub_book)
-    #book.debug_print()
+    os.remove(cover_path)
+    book.debug_print()
