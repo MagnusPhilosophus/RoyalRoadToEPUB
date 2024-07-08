@@ -3,8 +3,10 @@ import sys
 from ebooklib import epub
 from light_novel_world import LightNovelWorldBook
 from royal_road import RoyalRoadBook
+from novel_next import NovelNextBook
 
 if __name__ == "__main__":
+
     if len(sys.argv) < 2:
         print("No arguments provided")
         exit()
@@ -14,6 +16,8 @@ if __name__ == "__main__":
         book = RoyalRoadBook(url)
     elif 'lightnovelworld' in url:
         book = LightNovelWorldBook(url)
+    elif 'novelnext' in url:
+        book = NovelNextBook(url)
     else:
         print(f'No support for {url} yet')
 
@@ -25,7 +29,7 @@ if __name__ == "__main__":
     epub_book.add_author(book.get_author())
     epub_book.add_metadata('DC', 'description', book.get_description())
     cover_path = book.get_cover()
-    epub_book.set_cover("cover.jpg", open(cover_path, 'rb').read())
+    # epub_book.set_cover("cover.jpg", open(cover_path, 'rb').read())
     # Create a cover page
     cover_html = epub.EpubHtml(title='Cover', file_name='cover.xhtml', lang='en')
     cover_html.content = f'''
